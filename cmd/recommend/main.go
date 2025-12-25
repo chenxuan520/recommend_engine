@@ -7,6 +7,7 @@ import (
 	"recommend_engine/internal/history"
 	"recommend_engine/internal/logger"
 	"recommend_engine/internal/server"
+	taskpkg "recommend_engine/internal/task" // 使用别名导入
 	"recommend_engine/internal/user"
 	"recommend_engine/internal/workflow"
 )
@@ -66,8 +67,11 @@ func main() {
 		log.Fatalf("Failed to init engine: %v", err)
 	}
 
-	// 7. 启动 HTTP Server
-	srv := server.NewServer(userProvider, engine, historyStore)
+	// 7. 初始化 Task Manager
+	taskManager := taskpkg.NewManager()
+
+	// 8. 启动 HTTP Server
+	srv := server.NewServer(userProvider, engine, historyStore, taskManager)
 	log.Printf("Starting HTTP server on port %s...", serverCfg.Server.Port)
 	if err := srv.Run(":" + serverCfg.Server.Port); err != nil {
 		log.Fatalf("Server failed: %v", err)

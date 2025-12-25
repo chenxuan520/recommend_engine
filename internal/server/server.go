@@ -9,6 +9,7 @@ import (
 
 	"recommend_engine/internal/history"
 	"recommend_engine/internal/model"
+	taskpkg "recommend_engine/internal/task" // 使用别名导入以避免命名冲突
 	"recommend_engine/internal/user"
 	"recommend_engine/internal/workflow"
 
@@ -21,15 +22,17 @@ type Server struct {
 	userProvider user.Provider
 	engine       *workflow.Engine
 	historyStore history.Store
+	taskManager  *taskpkg.Manager // 使用别名
 }
 
 // NewServer 创建新的 HTTP 服务器
-func NewServer(up user.Provider, engine *workflow.Engine, hs history.Store) *Server {
+func NewServer(up user.Provider, engine *workflow.Engine, hs history.Store, tm *taskpkg.Manager) *Server {
 	s := &Server{
 		router:       gin.Default(),
 		userProvider: up,
 		engine:       engine,
 		historyStore: hs,
+		taskManager:  tm, // 使用别名
 	}
 	s.router.Use(s.corsMiddleware())
 	s.setupRoutes()
@@ -65,8 +68,43 @@ func (s *Server) setupRoutes() {
 
 	// 推荐接口 - 使用路径参数传递 scene
 	v1.POST("/recommend/:scene", s.handleRecommend)
+	// 异步任务结果查询接口
+	v1.GET("/recommend/result/:task_id", s.handleGetResult)
 }
 
+// handleGetResult 处理获取异步任务结果的请求
+// GET /api/v1/recommend/result/:task_id
+func (s *Server) handleGetResult(c *gin.Context) {
+	taskID := c.Param("task_id")
+	if taskID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "task_id parameter is required"})
+		return
+	}
+
+	task, err := s.taskManager.GetTask(taskID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 根据任务状态返回不同的响应
+	switch task.Status {
+	case "completed":
+		c.JSON(http.StatusOK, gin.H{
+			"status": task.Status,
+			"data":   task.Result,
+		})
+	case "failed":
+		c.JSON(http.StatusOK, gin.H{
+			"status": task.Status,
+			"error":  task.Error,
+		})
+	default: // "pending" or "processing"
+		c.JSON(http.StatusOK, gin.H{
+			"status": task.Status,
+		})
+	}
+}
 // authMiddleware 鉴权中间件
 func (s *Server) authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -130,47 +168,92 @@ func (s *Server) handleRecommend(c *gin.Context) {
 		ID:        u.ID,
 		Name:      u.Name,
 		Token:     u.Token,
-		Favorites: req.Favorites, // 使用请求中的动态收藏列表
+		Favorites: req.Favorites,
 	}
 
-	// 5. 准备 Workflow Context
-	// 设置 300s 超时
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 300*time.Second)
-	defer cancel()
+	// 5. 检查是同步还是异步执行
+	isAsync := c.Query("async") == "true"
 
-	wfCtx := workflow.NewContext(ctx, requestUser.ID, requestUser)
-	wfCtx.Config = map[string]interface{}{
-		"domain": scene,
-	}
+	if isAsync {
+		// --- 异步执行路径 ---
+		task := s.taskManager.NewTask()
+		c.JSON(http.StatusAccepted, gin.H{"task_id": task.ID})
 
-	// 6. 执行推荐
-	if err := s.engine.Run(wfCtx, scene); err != nil {
-		// 区分 pipeline not found 错误和执行错误
-		if strings.Contains(err.Error(), "pipeline not found") {
-			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("scene '%s' not supported", scene)})
+		go func() {
+			// 更新任务状态为处理中
+			s.taskManager.UpdateStatus(task.ID, taskpkg.StatusProcessing)
+
+			// 5.1 准备 Workflow Context (后台)
+			// 使用独立的后台 context，并设置一个较长的超时时间（例如5分钟）作为兜底
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			defer cancel()
+
+			wfCtx := workflow.NewContext(ctx, requestUser.ID, requestUser)
+			wfCtx.Config = map[string]interface{}{"domain": scene}
+
+			// 6. 执行推荐 (后台)
+			if err := s.engine.Run(wfCtx, scene); err != nil {
+				s.taskManager.SetError(task.ID, err)
+				return
+			}
+
+			candidates := wfCtx.GetCandidates()
+
+			// 7. 异步保存历史 (后台)
+			var itemNames []string
+			for _, item := range candidates {
+				itemNames = append(itemNames, item.Name)
+			}
+			if len(itemNames) > 0 {
+				if err := s.historyStore.SaveHistory(u.ID, scene, itemNames); err != nil {
+					// 即使历史保存失败，也应将推荐结果标记为成功
+					fmt.Printf("Warning: Failed to save history for task %s: %v\n", task.ID, err)
+				}
+			}
+			
+			// 8. 将最终结果存入任务
+			s.taskManager.SetResult(task.ID, gin.H{
+				"scene": scene,
+				"items": candidates,
+			})
+		}()
+	} else {
+		// --- 同步执行路径 (保持原有逻辑不变) ---
+		// 5. 准备 Workflow Context
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 300*time.Second)
+		defer cancel()
+
+		wfCtx := workflow.NewContext(ctx, requestUser.ID, requestUser)
+		wfCtx.Config = map[string]interface{}{"domain": scene}
+
+		// 6. 执行推荐
+		if err := s.engine.Run(wfCtx, scene); err != nil {
+			if strings.Contains(err.Error(), "pipeline not found") {
+				c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("scene '%s' not supported", scene)})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("recommendation failed: %v", err)})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("recommendation failed: %v", err)})
-		return
-	}
 
-	candidates := wfCtx.GetCandidates()
+		candidates := wfCtx.GetCandidates()
 
-	// 7. 异步保存历史
-	go func() {
-		var itemNames []string
-		for _, item := range candidates {
-			itemNames = append(itemNames, item.Name)
-		}
-		if len(itemNames) > 0 {
-			if err := s.historyStore.SaveHistory(u.ID, scene, itemNames); err != nil {
-				fmt.Printf("Failed to save history async: %v\n", err)
+		// 7. 异步保存历史
+		go func() {
+			var itemNames []string
+			for _, item := range candidates {
+				itemNames = append(itemNames, item.Name)
 			}
-		}
-	}()
+			if len(itemNames) > 0 {
+				if err := s.historyStore.SaveHistory(u.ID, scene, itemNames); err != nil {
+					fmt.Printf("Failed to save history async: %v\n", err)
+				}
+			}
+		}()
 
-	c.JSON(http.StatusOK, gin.H{
-		"scene": scene,
-		"items": candidates,
-	})
+		c.JSON(http.StatusOK, gin.H{
+			"scene": scene,
+			"items": candidates,
+		})
+	}
 }
