@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -37,6 +38,12 @@ type FileStore struct {
 // NewFileStore 创建一个新的 FileStore
 // 如果文件不存在，会自动创建
 func NewFileStore(filePath string) (*FileStore, error) {
+	// 确保目录存在
+	dir := filepath.Dir(filePath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create directory for history file: %w", err)
+	}
+
 	fs := &FileStore{
 		filePath: filePath,
 		records:  make([]Record, 0),
@@ -53,6 +60,12 @@ func NewFileStore(filePath string) (*FileStore, error) {
 func (s *FileStore) load() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	// 确保目录存在 before opening the file
+	dir := filepath.Dir(s.filePath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create directory for history file: %w", err)
+	}
 
 	f, err := os.OpenFile(s.filePath, os.O_RDONLY|os.O_CREATE, 0644)
 	if err != nil {
@@ -107,6 +120,12 @@ func (s *FileStore) SaveHistory(userID string, domain string, items []string) er
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// 确保目录存在 before opening the file
+	dir := filepath.Dir(s.filePath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create directory for history file: %w", err)
+	}
+
 	f, err := os.OpenFile(s.filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to open history file for appending: %w", err)
@@ -158,6 +177,12 @@ func (s *FileStore) Cleanup(days int) error {
 	}
 
 	// 2. 重写文件
+	// 确保目录存在 before opening the file
+	dir := filepath.Dir(s.filePath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create directory for history file: %w", err)
+	}
+
 	// 使用 os.O_TRUNC 清空文件
 	f, err := os.OpenFile(s.filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {

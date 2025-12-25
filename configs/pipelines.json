@@ -2,41 +2,41 @@
   "pipelines": {
     "music": {
       "description": "Music Recommendation Pipeline",
-      "timeout_ms": 30000,
+      "timeout_ms": 300000,
       "nodes": [
         {
           "name": "llm_recall_group",
           "type": "parallel",
           "nodes": [
             {
-              "name": "xinhuo_recall_1",
+              "name": "doubao_recall_1",
               "type": "recall_llm",
               "config": {
-                "llm_config_key": "xinhuo",
+                "llm_config_key": "doubao",
                 "count": 50
               }
             },
             {
-              "name": "xinhuo_recall_2",
+              "name": "doubao_recall_2",
               "type": "recall_llm",
               "config": {
-                "llm_config_key": "xinhuo",
+                "llm_config_key": "doubao",
                 "count": 50
               }
             },
             {
-              "name": "xinhuo_recall_3",
+              "name": "doubao_recall_3",
               "type": "recall_llm",
               "config": {
-                "llm_config_key": "xinhuo",
+                "llm_config_key": "doubao",
                 "count": 50
               }
             },
             {
-              "name": "xinhuo_recall_4",
+              "name": "doubao_recall_4",
               "type": "recall_llm",
               "config": {
-                "llm_config_key": "xinhuo",
+                "llm_config_key": "doubao",
                 "count": 50
               }
             }

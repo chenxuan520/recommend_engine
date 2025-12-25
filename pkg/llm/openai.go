@@ -41,7 +41,7 @@ func NewOpenAIClient(endpoint, apiKey string, model string) *OpenAIClient {
 		apiKey:   apiKey,
 		model:    model,
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: 180 * time.Second,
 		},
 	}
 }
@@ -59,7 +59,7 @@ type chatResponse struct {
 
 func (c *OpenAIClient) Chat(ctx context.Context, messages []Message, options ...Option) (string, error) {
 	// Apply options if needed (e.g. override model per request)
-	// For simplicity, we use the client's default model unless changed here, 
+	// For simplicity, we use the client's default model unless changed here,
 	// but the current structure applies options to the client instance which is not thread safe for per-request options.
 	// For MVP, we'll just use the configured model.
 

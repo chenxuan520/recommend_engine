@@ -59,10 +59,10 @@ func (s *Server) Run(addr string) error {
 
 func (s *Server) setupRoutes() {
 	v1 := s.router.Group("/api/v1")
-	
+
 	// 中间件：Token 鉴权
 	v1.Use(s.authMiddleware())
-	
+
 	// 推荐接口 - 使用路径参数传递 scene
 	v1.POST("/recommend/:scene", s.handleRecommend)
 }
@@ -116,7 +116,7 @@ func (s *Server) handleRecommend(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body: " + err.Error()})
 		return
 	}
-	
+
 	// 3. 从 Context 获取鉴权用户
 	uVal, exists := c.Get("user")
 	if !exists {
@@ -134,8 +134,8 @@ func (s *Server) handleRecommend(c *gin.Context) {
 	}
 
 	// 5. 准备 Workflow Context
-	// 设置 30s 超时
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	// 设置 300s 超时
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 300*time.Second)
 	defer cancel()
 
 	wfCtx := workflow.NewContext(ctx, requestUser.ID, requestUser)
@@ -155,7 +155,7 @@ func (s *Server) handleRecommend(c *gin.Context) {
 	}
 
 	candidates := wfCtx.GetCandidates()
-	
+
 	// 7. 异步保存历史
 	go func() {
 		var itemNames []string
