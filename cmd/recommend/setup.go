@@ -13,7 +13,7 @@ func RegisterNodes(llmCfg *LLMGlobalConfig, llmConfigPath string, historyStore h
 	registry := workflow.NewRegistry()
 
 	// 注册 LLM Recall
-	registry.Register("recall", func(cfg workflow.NodeConfig) (workflow.Node, error) {
+	registry.Register("recall_llm", func(cfg workflow.NodeConfig) (workflow.Node, error) {
 		// 从 Pipeline Config 获取 key
 		key, ok := cfg.Config["llm_config_key"].(string)
 		if !ok {
@@ -36,7 +36,7 @@ func RegisterNodes(llmCfg *LLMGlobalConfig, llmConfigPath string, historyStore h
 	})
 
 	// 注册 History Filter (使用闭包注入 historyStore)
-	registry.Register("filter", func(cfg workflow.NodeConfig) (workflow.Node, error) {
+	registry.Register("filter_history", func(cfg workflow.NodeConfig) (workflow.Node, error) {
 		return nodes.NewHistoryFilterNode(cfg, historyStore)
 	})
 
@@ -44,7 +44,7 @@ func RegisterNodes(llmCfg *LLMGlobalConfig, llmConfigPath string, historyStore h
 	registry.Register("filter_favorites", nodes.NewFavoritesFilterNode)
 
 	// 注册 Rank
-	registry.Register("rank", nodes.NewSimpleRankNode)
+	registry.Register("rank_simple", nodes.NewSimpleRankNode)
 
 	// 注册 Mix Favorites Rank (新)
 	registry.Register("rank_mix_favorites", nodes.NewMixFavoritesRankNode)
