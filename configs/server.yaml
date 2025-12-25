@@ -1,0 +1,9 @@
+server:
+  port: "8080"
+  debug: false
+
+paths:
+  users: "configs/users.yaml"
+  pipelines: "configs/pipelines.json"
+  llm: "configs/llm.yaml"
+  history: "data/history.jsonl"

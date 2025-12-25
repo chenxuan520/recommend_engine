@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"recommend_engine/internal/logger"
 	"recommend_engine/internal/model"
 	"recommend_engine/internal/workflow"
 	"recommend_engine/pkg/llm"
@@ -42,7 +43,7 @@ func (n *LLMRecallNode) Execute(ctx *workflow.Context) error {
 	prompt := fmt.Sprintf(`
 用户喜欢以下音乐: %v.
 请推荐 %d 首风格相似的、真实存在的、已发行的歌曲。
-严禁捏造不存在的歌名，必须是真实歌手演唱的作品。
+**严禁捏造不存在的歌名，必须是真实歌手演唱的作品**。
 必须严格输出为 JSON 字符串列表格式，例如 ["歌曲A", "歌曲B"]。
 不要包含任何解释、Markdown 格式标记或额外的文本。
 确保歌曲名称准确。
@@ -53,15 +54,19 @@ func (n *LLMRecallNode) Execute(ctx *workflow.Context) error {
 		{Role: "user", Content: prompt},
 	}
 
+	logger.Debug("[LLM Request] Node: %s, Prompt: %s", n.name, prompt)
+
 	// 调用 LLM
 	respContent, err := n.llmClient.Chat(ctx.Ctx, messages)
 	if err != nil {
 		return fmt.Errorf("llm chat failed: %w", err)
 	}
 
+	logger.Debug("[LLM Response] Node: %s, Content: %s", n.name, respContent)
+
 	// 尝试清洗和解析 JSON
 	cleanedResp := cleanJSON(respContent)
-	
+
 	// 解析结果
 	var songNames []string
 	if err := json.Unmarshal([]byte(cleanedResp), &songNames); err != nil {
@@ -79,7 +84,7 @@ func (n *LLMRecallNode) Execute(ctx *workflow.Context) error {
 		if name == "" {
 			continue
 		}
-		
+
 		items = append(items, &model.Item{
 			ID:     name, // 简单起见 ID 使用 name
 			Name:   name,
@@ -97,7 +102,7 @@ func (n *LLMRecallNode) Execute(ctx *workflow.Context) error {
 // cleanJSON 尝试从文本中提取并清理 JSON 数组
 func cleanJSON(content string) string {
 	content = strings.TrimSpace(content)
-	
+
 	// 1. 移除 Markdown 代码块标记
 	content = strings.TrimPrefix(content, "```json")
 	content = strings.TrimPrefix(content, "```")

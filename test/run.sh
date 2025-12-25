@@ -9,7 +9,7 @@ echo "Starting Recommendation Engine Integration Test..."
 
 # 1. 在后台启动服务
 echo "Step 1: Starting server..."
-go run cmd/recommend/main.go > server.log 2>&1 &
+go run ./cmd/recommend > server.log 2>&1 &
 SERVER_PID=$!
 echo "Server PID: $SERVER_PID"
 

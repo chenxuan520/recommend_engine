@@ -26,10 +26,26 @@
 ### 2. 运行
 
 ```bash
-go run cmd/recommend/main.go
+# 直接运行
+go run ./cmd/recommend
+
+# 或者编译运行
+go build -o recommend-server ./cmd/recommend
+./recommend-server
 ```
 
 服务默认启动在 `:8080` 端口。
+
+如果需要查看详细的调试日志（包含 Workflow 执行轨迹和 LLM 请求/响应），可以开启 Debug 模式：
+
+```bash
+# 方式 1: 命令行参数
+go run ./cmd/recommend -debug
+
+# 方式 2: 修改配置文件 configs/server.yaml
+# server:
+#   debug: true
+```
 
 ### 3. 测试
 
@@ -45,10 +61,9 @@ go run cmd/recommend/main.go
 curl -X POST -H "Authorization: Bearer sk-token-alice" \
      -H "Content-Type: application/json" \
      -d '{
-           "scene": "music",
            "favorites": ["写给黄淮", "可能否", "童话镇"]
          }' \
-     "http://localhost:8080/api/v1/recommend"
+     "http://localhost:8080/api/v1/recommend/music"
 ```
 
 ## 目录结构

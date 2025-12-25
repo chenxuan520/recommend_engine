@@ -1,6 +1,7 @@
 # Binaries
 main
 recommend_engine
+recommend-server
 llm.yaml
 
 # Configs (Be careful with committing real keys!)
@@ -8,7 +9,7 @@ llm.yaml
 # configs/users.yaml
 
 # Data
-history.jsonl
+data/history.jsonl
 *.log
 
 # OS

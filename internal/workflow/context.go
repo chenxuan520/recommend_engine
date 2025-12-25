@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"recommend_engine/internal/logger"
 	"recommend_engine/internal/model"
 )
 
@@ -74,6 +75,7 @@ func (c *Context) AddLog(msg string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.TraceLog = append(c.TraceLog, msg)
+	logger.Debug("[Workflow Trace] %s", msg)
 }
 
 // Node 定义工作流中的执行节点
