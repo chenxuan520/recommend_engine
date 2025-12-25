@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"time"
 
 	"recommend_engine/internal/history"
 	"recommend_engine/internal/logger"
@@ -31,6 +32,24 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to init history store: %v", err)
 	}
+
+	// 自动清理过期历史记录 (保留7天)
+	// 启动时先执行一次，释放内存并瘦身文件
+	if err := historyStore.Cleanup(7); err != nil {
+		log.Printf("Warning: Failed to perform initial history cleanup: %v", err)
+	}
+	// 启动定时清理任务 (每24小时)
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			if err := historyStore.Cleanup(7); err != nil {
+				log.Printf("Error during scheduled history cleanup: %v", err)
+			} else {
+				log.Println("History cleanup completed successfully")
+			}
+		}
+	}()
 
 	// 4. 加载 LLM 配置
 	llmCfg, err := loadLLMConfig(serverCfg.Paths.LLM)

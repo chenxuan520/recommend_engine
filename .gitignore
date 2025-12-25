@@ -1,7 +1,8 @@
 # Binaries
-main
-recommend_engine
-recommend-server
+/main
+/recommend
+/recommend_engine
+/recommend-server
 llm.yaml
 
 # Configs (Be careful with committing real keys!)

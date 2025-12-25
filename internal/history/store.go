@@ -23,6 +23,8 @@ type Store interface {
 	GetRecentHistory(userID string, domain string, days int) ([]string, error)
 	// SaveHistory 保存推荐历史
 	SaveHistory(userID string, domain string, items []string) error
+	// Cleanup 清理超过指定天数的历史记录
+	Cleanup(days int) error
 }
 
 // FileStore 基于文件的历史存储实现
@@ -130,6 +132,48 @@ func (s *FileStore) SaveHistory(userID string, domain string, items []string) er
 		// 2. 更新内存
 		s.records = append(s.records, record)
 	}
+
+	return nil
+}
+
+// Cleanup 清理超过指定天数的历史记录
+func (s *FileStore) Cleanup(days int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	now := time.Now().Unix()
+	cutoff := now - int64(days*24*60*60)
+
+	// 1. 过滤内存中的记录
+	var newRecords []Record
+	for _, r := range s.records {
+		if r.Timestamp >= cutoff {
+			newRecords = append(newRecords, r)
+		}
+	}
+
+	// 如果没有记录被清理，且总数没有变，则不需要重写文件
+	if len(newRecords) == len(s.records) {
+		return nil
+	}
+
+	// 2. 重写文件
+	// 使用 os.O_TRUNC 清空文件
+	f, err := os.OpenFile(s.filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open history file for cleanup: %w", err)
+	}
+	defer f.Close()
+
+	encoder := json.NewEncoder(f)
+	for _, r := range newRecords {
+		if err := encoder.Encode(r); err != nil {
+			return fmt.Errorf("failed to write record during cleanup: %w", err)
+		}
+	}
+
+	// 3. 更新内存
+	s.records = newRecords
 
 	return nil
 }
