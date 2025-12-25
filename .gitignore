@@ -1,0 +1,15 @@
+# Binaries
+main
+recommend_engine
+llm.yaml
+
+# Configs (Be careful with committing real keys!)
+# configs/llm.yaml 
+# configs/users.yaml
+
+# Data
+history.jsonl
+*.log
+
+# OS
+.DS_Store

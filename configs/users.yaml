@@ -1,0 +1,7 @@
+users:
+  - id: "user_001"
+    token: "sk-token-alice"
+    name: "Alice"
+  - id: "user_002"
+    token: "sk-token-bob"
+    name: "Bob"

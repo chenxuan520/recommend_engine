@@ -1,0 +1,75 @@
+{
+  "pipelines": {
+    "music": {
+      "description": "Music Recommendation Pipeline",
+      "timeout_ms": 30000,
+      "nodes": [
+        {
+          "name": "llm_recall_group",
+          "type": "parallel",
+          "nodes": [
+            {
+              "name": "xinhuo_recall_1",
+              "type": "recall",
+              "config": {
+                "llm_config_key": "xinhuo",
+                "count": 50
+              }
+            },
+            {
+              "name": "xinhuo_recall_2",
+              "type": "recall",
+              "config": {
+                "llm_config_key": "xinhuo",
+                "count": 50
+              }
+            },
+            {
+              "name": "xinhuo_recall_3",
+              "type": "recall",
+              "config": {
+                "llm_config_key": "xinhuo",
+                "count": 50
+              }
+            },
+            {
+              "name": "xinhuo_recall_4",
+              "type": "recall",
+              "config": {
+                "llm_config_key": "xinhuo",
+                "count": 50
+              }
+            }
+          ]
+        },
+        {
+          "name": "history_dedup",
+          "type": "filter",
+          "config": {
+            "lookback_days": 1
+          }
+        },
+        {
+          "name": "favorites_dedup",
+          "type": "filter_favorites",
+          "config": {}
+        },
+        {
+          "name": "shuffle_rank",
+          "type": "rank",
+          "config": {
+            "order": "shuffle",
+            "limit": 30
+          }
+        },
+        {
+          "name": "mix_favorites",
+          "type": "rank_mix_favorites",
+          "config": {
+            "mix_count": 2
+          }
+        }
+      ]
+    }
+  }
+}

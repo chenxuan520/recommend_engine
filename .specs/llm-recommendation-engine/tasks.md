@@ -1,0 +1,58 @@
+# 实施计划
+
+- [ ] 1. 项目初始化与基础组件
+  - [ ] 1.1 初始化 Go Module 和目录结构
+    - 创建 `cmd`, `internal`, `pkg`, `configs` 等标准目录
+    - _需求: 4.1_
+  - [ ] 1.2 定义核心数据模型
+    - 在 `internal/model` 中定义 `User` 和 `Item` 结构体
+    - _需求: 1.1, 4.2_
+  - [ ] 1.3 实现静态用户提供者 (StaticUserProvider)
+    - 实现从 `users.yaml` 加载用户信息
+    - 提供 `GetUser(id)` 接口
+    - _需求: 1.1, 1.2, 1.3_
+  - [ ] 1.4 实现文件历史存储 (FileHistoryStore)
+    - 实现基于 JSONL 的历史记录读写
+    - 提供 `GetRecent(days)` 和 `Save()` 接口
+    - _需求: 3.1, 3.3_
+
+- [ ] 2. 工作流引擎核心 (Workflow Core)
+  - [ ] 2.1 定义 WorkflowContext 和 Node 接口
+    - 在 `internal/workflow` 中定义带锁的 `Context`
+    - 定义 `Node` 接口 (`Execute(*Context) error`)
+    - _需求: 4.1_
+  - [ ] 2.2 实现并行节点 (ParallelNode)
+    - 实现 `group/parallel` 类型节点
+    - 使用 Goroutine 并发执行子节点并聚合错误
+    - _需求: 4.1 (并发支持)_
+  - [ ] 2.3 实现管道引擎 (PipelineEngine)
+    - 实现配置解析与节点注册机制
+    - 实现 `Run(ctx, scene)` 方法驱动流程执行
+    - _需求: 4.1_
+
+- [ ] 3. 业务节点实现 (Strategy Nodes)
+  - [ ] 3.1 封装 LLM Client
+    - 在 `pkg/llm` 中封装 OpenAI 协议客户端
+    - 支持 BaseURL 和 API Key 配置
+    - _需求: 2.2_
+  - [ ] 3.2 实现 LLM 召回节点 (LLMRecallNode)
+    - 实现 Prompt 构建逻辑
+    - 解析 LLM 返回结果并写入 Context
+    - _需求: 2.1, 2.3_
+  - [ ] 3.3 实现历史去重节点 (HistoryFilterNode)
+    - 从 Context 读取候选集
+    - 调用 HistoryStore 过滤 7 天内的历史
+    - _需求: 3.1, 3.2_
+  - [ ] 3.4 实现简单排序节点 (SimpleRankNode)
+    - 实现基本的排序逻辑 (如按分数倒序)
+    - _需求: 4.1_
+
+- [ ] 4. 配置与入口集成
+  - [ ] 4.1 实现配置加载器
+    - 定义 `pipelines.json` 结构并实现加载逻辑
+    - _需求: 1.1_
+  - [ ] 4.2 实现 CLI 入口
+    - 在 `cmd/recommend` 中实现主程序
+    - 串联 UserProvider, Engine 和各个 Node
+    - 处理命令行参数 (UserID, Scenario)
+    - _需求: 1.1_
