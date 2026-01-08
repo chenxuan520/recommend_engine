@@ -20,7 +20,7 @@
 确保 `configs/` 目录下有以下配置文件：
 
 *   `configs/users.yaml`: 定义用户和 Token（用于鉴权）。
-*   `configs/llm.yaml`: 定义 LLM 的 Endpoint 和 API Key。
+*   `configs/llm.yaml`: 定义 LLM 的 Endpoint 和 API Key，可以参考 `configs/demo_llm.yaml` 格式。
 *   `configs/pipelines.json`: 定义推荐流程。
 
 ### 2. 运行

@@ -12,6 +12,7 @@ llm.yaml
 # Data
 data/history.jsonl
 *.log
+nohup.out
 
 # OS
 .DS_Store

@@ -1,0 +1,9 @@
+llms:
+  xinhuo:
+    chat_endpoint: "https://spark-api-open.xf-yun.com/v1/chat/completions"
+    api_key: "<your_api_key>"
+    model: "max-32k"
+  doubao:
+    chat_endpoint: "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
+    api_key: "<your_api_key>"
+    model: "doubao-seed-1-6-flash-250828"
